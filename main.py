@@ -74,3 +74,5 @@ def crear_video():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Actualizado para forzar redeploy
