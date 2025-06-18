@@ -17,26 +17,16 @@ def crear_video():
     try:
         data = request.get_json()
 
-        # Validar campos necesarios
-        campos = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
-        for campo in campos:
+        # ✅ Validaciones básicas (esto evita errores ocultos)
+        campos_obligatorios = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
+        for campo in campos_obligatorios:
             if campo not in data or not data[campo]:
-                return jsonify({"status": "error", "message": f"Falta el campo '{campo}'"}), 400
+                return jsonify({"error": f"Falta el campo obligatorio: {campo}"}), 400
 
-        # Convertir duración a segundos si es necesario
-        duracion = data["duracion"]
-        if isinstance(duracion, str) and ":" in duracion:
-            h, m, s = map(int, duracion.split(":"))
-            duracion = h * 3600 + m * 60 + s
-        else:
-            duracion = int(duracion)
-
-        # Crear carpeta
         id = str(uuid.uuid4())
         carpeta = f"proyectos/{id}"
         os.makedirs(carpeta, exist_ok=True)
 
-        # Descargar archivos
         fondo = f"{carpeta}/fondo.mp4"
         portada = f"{carpeta}/portada.png"
         logo1 = f"{carpeta}/logo1.png"
@@ -50,6 +40,9 @@ def crear_video():
         descargar(data["logo1"], logo1)
         descargar(data["logo2"], logo2)
         descargar(data["audio"], audio)
+
+        duracion = data["duracion"]
+        titulo = data["titulo"]
 
         fondo_img = Image.open(portada).resize((1280, 720))
         portada_img = Image.open(portada).resize((400, 400))
@@ -73,7 +66,7 @@ def crear_video():
             "-t", str(duracion),
             "-y", salida
         ]
-        subprocess.run(comando)
+        subprocess.run(comando, check=True)
 
         return jsonify({
             "video_url": f"/{salida}",
@@ -82,8 +75,7 @@ def crear_video():
         })
 
     except Exception as e:
-        # Captura y muestra errores en la respuesta
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8080)
