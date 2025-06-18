@@ -16,8 +16,20 @@ def descargar(url, nombre):
 def crear_video():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No se recibió JSON"}), 400
+
+        # Validar datos esenciales
+        campos_obligatorios = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
+        for campo in campos_obligatorios:
+            if campo not in data or not data[campo]:
+                return jsonify({"status": "error", "message": f"Falta el campo '{campo}'"}), 400
+
+        # Convertir duración si viene en formato HH:MM:SS
+        duracion = data["duracion"]
+        if isinstance(duracion, str) and ":" in duracion:
+            h, m, s = map(int, duracion.split(":"))
+            duracion = h * 3600 + m * 60 + s
+        else:
+            duracion = int(duracion)
 
         id = str(uuid.uuid4())
         carpeta = f"proyectos/{id}"
@@ -37,12 +49,8 @@ def crear_video():
         descargar(data["logo2"], logo2)
         descargar(data["audio"], audio)
 
-        duracion = data["duracion"]
-        titulo = data["titulo"]
-
-        # Crear miniatura
+        fondo_img = Image.open(portada).resize((1280, 720))
         portada_img = Image.open(portada).resize((400, 400))
-        fondo_img = Image.new("RGB", (1280, 720), (0, 0, 0))
         logo1_img = Image.open(logo1).resize((100, 100))
 
         fondo_img.paste(portada_img, (440, 160))
@@ -60,10 +68,10 @@ def crear_video():
             "[0:v][1:v] overlay=10:10 [v1]; [v1][2:v] overlay=W-w-10:H/2-h/2 [v2]; [v2][3:v] overlay=W-w-420:H/2-h/2",
             "-map", "[v2]",
             "-map", "4:a",
-            "-t", duracion,
+            "-t", str(duracion),
             "-y", salida
         ]
-        subprocess.run(comando, check=True)
+        subprocess.run(comando)
 
         return jsonify({
             "video_url": f"/{salida}",
@@ -72,7 +80,7 @@ def crear_video():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
