@@ -8,25 +8,24 @@ import requests
 app = Flask(__name__)
 
 def descargar(url, nombre):
-    r = requests.get(url)
-    with open(nombre, 'wb') as f:
-        f.write(r.content)
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        with open(nombre, 'wb') as f:
+            f.write(r.content)
+    except Exception as e:
+        raise Exception(f"Error al descargar {url}: {str(e)}")
 
 @app.route("/crear-video", methods=["POST"])
 def crear_video():
     try:
         data = request.get_json()
 
-        # ✅ Validaciones básicas (esto evita errores ocultos)
-        campos_obligatorios = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
-        for campo in campos_obligatorios:
-            if campo not in data or not data[campo]:
-                return jsonify({"error": f"Falta el campo obligatorio: {campo}"}), 400
-
         id = str(uuid.uuid4())
         carpeta = f"proyectos/{id}"
         os.makedirs(carpeta, exist_ok=True)
 
+        # Archivos
         fondo = f"{carpeta}/fondo.mp4"
         portada = f"{carpeta}/portada.png"
         logo1 = f"{carpeta}/logo1.png"
@@ -35,15 +34,18 @@ def crear_video():
         miniatura = f"{carpeta}/miniatura.png"
         salida = f"{carpeta}/video.mp4"
 
+        # Descargar todos los archivos
         descargar(data["fondo_video"], fondo)
         descargar(data["portada"], portada)
         descargar(data["logo1"], logo1)
         descargar(data["logo2"], logo2)
         descargar(data["audio"], audio)
 
+        # Datos adicionales
         duracion = data["duracion"]
         titulo = data["titulo"]
 
+        # Crear miniatura
         fondo_img = Image.open(portada).resize((1280, 720))
         portada_img = Image.open(portada).resize((400, 400))
         logo1_img = Image.open(logo1).resize((100, 100))
@@ -52,6 +54,7 @@ def crear_video():
         fondo_img.paste(logo1_img, (20, 20))
         fondo_img.save(miniatura)
 
+        # Comando FFmpeg
         comando = [
             "ffmpeg",
             "-i", fondo,
@@ -75,7 +78,7 @@ def crear_video():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=5000)
