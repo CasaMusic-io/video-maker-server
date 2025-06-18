@@ -17,13 +17,13 @@ def crear_video():
     try:
         data = request.get_json()
 
-        # Validar datos esenciales
-        campos_obligatorios = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
-        for campo in campos_obligatorios:
+        # Validar campos necesarios
+        campos = ["fondo_video", "portada", "logo1", "logo2", "audio", "duracion", "titulo"]
+        for campo in campos:
             if campo not in data or not data[campo]:
                 return jsonify({"status": "error", "message": f"Falta el campo '{campo}'"}), 400
 
-        # Convertir duración si viene en formato HH:MM:SS
+        # Convertir duración a segundos si es necesario
         duracion = data["duracion"]
         if isinstance(duracion, str) and ":" in duracion:
             h, m, s = map(int, duracion.split(":"))
@@ -31,10 +31,12 @@ def crear_video():
         else:
             duracion = int(duracion)
 
+        # Crear carpeta
         id = str(uuid.uuid4())
         carpeta = f"proyectos/{id}"
         os.makedirs(carpeta, exist_ok=True)
 
+        # Descargar archivos
         fondo = f"{carpeta}/fondo.mp4"
         portada = f"{carpeta}/portada.png"
         logo1 = f"{carpeta}/logo1.png"
@@ -80,6 +82,7 @@ def crear_video():
         })
 
     except Exception as e:
+        # Captura y muestra errores en la respuesta
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
