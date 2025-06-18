@@ -16,12 +16,13 @@ def descargar(url, nombre):
 def crear_video():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No se recibió JSON"}), 400
 
         id = str(uuid.uuid4())
         carpeta = f"proyectos/{id}"
         os.makedirs(carpeta, exist_ok=True)
 
-        # Rutas locales
         fondo = f"{carpeta}/fondo.mp4"
         portada = f"{carpeta}/portada.png"
         logo1 = f"{carpeta}/logo1.png"
@@ -30,7 +31,6 @@ def crear_video():
         miniatura = f"{carpeta}/miniatura.png"
         salida = f"{carpeta}/video.mp4"
 
-        # Descargar archivos
         descargar(data["fondo_video"], fondo)
         descargar(data["portada"], portada)
         descargar(data["logo1"], logo1)
@@ -41,15 +41,14 @@ def crear_video():
         titulo = data["titulo"]
 
         # Crear miniatura
-        fondo_img = Image.open(fondo if fondo.endswith(".png") else portada).resize((1280, 720))
         portada_img = Image.open(portada).resize((400, 400))
+        fondo_img = Image.new("RGB", (1280, 720), (0, 0, 0))
         logo1_img = Image.open(logo1).resize((100, 100))
 
         fondo_img.paste(portada_img, (440, 160))
         fondo_img.paste(logo1_img, (20, 20))
         fondo_img.save(miniatura)
 
-        # Crear video con ffmpeg
         comando = [
             "ffmpeg",
             "-i", fondo,
@@ -61,7 +60,7 @@ def crear_video():
             "[0:v][1:v] overlay=10:10 [v1]; [v1][2:v] overlay=W-w-10:H/2-h/2 [v2]; [v2][3:v] overlay=W-w-420:H/2-h/2",
             "-map", "[v2]",
             "-map", "4:a",
-            "-t", str(duracion),
+            "-t", duracion,
             "-y", salida
         ]
         subprocess.run(comando, check=True)
@@ -75,4 +74,5 @@ def crear_video():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Actualizado para forzar redeploy
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
